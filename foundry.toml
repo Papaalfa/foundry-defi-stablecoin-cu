@@ -1,5 +1,8 @@
 [profile.default]
-remappings = ["@openzeppelin/=lib/openzeppelin-contracts/contracts/"]
+remappings = [
+    "@chainlink/=lib/chainlink-brownie-contracts/contracts/",
+    "@openzeppelin/=lib/openzeppelin-contracts/contracts/",
+]
 src = "src"
 out = "out"
 libs = ["lib"]
