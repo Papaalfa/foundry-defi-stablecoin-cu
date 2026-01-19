@@ -69,7 +69,7 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
     uint256 private constant PRECISION = 1e18;
     uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10; // To bring 1e8 to 1e18
-    uint256 private constant LIQUIDATION_FACTOR = 2; // 200% overcollateralized
+    uint256 private constant LIQUIDATION_THRESHOLD = 50; // 200% overcollateralized
     uint256 private constant MIN_HEALTH_FACTOR = 1;
     uint256 private constant LIQUIDATION_BONUS = 10; // 10% bonus
     uint256 private constant LIQUIDATION_PRECISION = 100;
@@ -314,6 +314,10 @@ contract DSCEngine is ReentrancyGuard {
         }
     }
 
+    /*
+    * @dev Low level internal function, do not call unless the function calling it is 
+    * checking for health factor being broken.
+    */
     function _burnDsc(uint256 amountDscToBurn, address onBehalfOf, address dscFrom) private {
         sDscMinted[onBehalfOf] -= amountDscToBurn;
 
@@ -360,7 +364,8 @@ contract DSCEngine is ReentrancyGuard {
         // total USD minted
         // total collateral value
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
-        return (collateralValueInUsd * PRECISION) / (totalDscMinted * LIQUIDATION_FACTOR);
+        //suggest the bug here is devision by zero
+        return (collateralValueInUsd * PRECISION * LIQUIDATION_THRESHOLD / LIQUIDATION_PRECISION) / totalDscMinted;
     }
 
     function _getUsdValue(address token, uint256 amount) private view returns (uint256 usdValue) {
