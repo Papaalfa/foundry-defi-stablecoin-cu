@@ -28,6 +28,7 @@ import {DecentralizedStableCoin} from "./DecentralizedStableCoin.sol";
 import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {console} from "forge-std/console.sol";
 
 /*
  * @title DSCEngine
@@ -70,7 +71,7 @@ contract DSCEngine is ReentrancyGuard {
     uint256 private constant PRECISION = 1e18;
     uint256 private constant ADDITIONAL_FEED_PRECISION = 1e10; // To bring 1e8 to 1e18
     uint256 private constant LIQUIDATION_THRESHOLD = 50; // 200% overcollateralized
-    uint256 private constant MIN_HEALTH_FACTOR = 1;
+    uint256 private constant MIN_HEALTH_FACTOR = 1e18; // 1.0
     uint256 private constant LIQUIDATION_BONUS = 10; // 10% bonus
     uint256 private constant LIQUIDATION_PRECISION = 100;
 
@@ -358,13 +359,19 @@ contract DSCEngine is ReentrancyGuard {
      *       A health factor < MIN_HEALTH_FACTOR means you're unhealthy / liquidatable
      * @param totalDscMinted: The total amount of DSC minted by the user
      * @param collateralValueInUsd: The total USD value of the collateral deposited by the user
-     * @return The health factor of the user
+     * @return The health factor of the user    
      */
     function _healthFactor(address user) private view returns (uint256 healthFactor) {
         // total USD minted
         // total collateral value
         (uint256 totalDscMinted, uint256 collateralValueInUsd) = _getAccountInformation(user);
-        //suggest the bug here is devision by zero
+        
+        // suggest the bug here is devision by zero
+        // if no dsc minted, return max uint256
+        if (totalDscMinted == 0) {
+            return type(uint256).max;
+        }
+
         return (collateralValueInUsd * PRECISION * LIQUIDATION_THRESHOLD / LIQUIDATION_PRECISION) / totalDscMinted;
     }
 
@@ -395,6 +402,10 @@ contract DSCEngine is ReentrancyGuard {
     /*//////////////////////////////////////////////////////////////
                     PUBLIC & EXTERNAL VIEW FUNCTIONS
     //////////////////////////////////////////////////////////////*/
+    function getHealthFactor(address user) external view returns (uint256) {
+        return _healthFactor(user);
+    }
+
     function getUsdValue(
         address token,
         uint256 amount // in WEI
@@ -433,4 +444,17 @@ contract DSCEngine is ReentrancyGuard {
         return ((usdAmountInWei * PRECISION) / (uint256(price) * ADDITIONAL_FEED_PRECISION));
     }
 
+    function getAccountInformation(
+        address user
+    ) external view returns (uint256 totalDscMinted, uint256 collateralValueInUsd) {
+        return (_getAccountInformation(user));
+    }
+
+    function getDscMinted(address user) external view returns (uint256) {
+        return sDscMinted[user];
+    }
+
+    function getCollateralDeposited(address user, address token) external view returns (uint256) {
+        return sCollateralDeposited[user][token];
+    }
 }
