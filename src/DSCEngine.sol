@@ -375,6 +375,19 @@ contract DSCEngine is ReentrancyGuard {
         return (collateralValueInUsd * PRECISION * LIQUIDATION_THRESHOLD / LIQUIDATION_PRECISION) / totalDscMinted;
     }
 
+    function _calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    )
+        internal
+        pure
+        returns (uint256)
+    {
+        if (totalDscMinted == 0) return type(uint256).max;
+        uint256 collateralAdjustedForThreshold = (collateralValueInUsd * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
+        return (collateralAdjustedForThreshold * PRECISION) / totalDscMinted;
+    }
+
     function _getUsdValue(address token, uint256 amount) private view returns (uint256 usdValue) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(sPriceFeeds[token]);
         (, int256 price,,,) = priceFeed.latestRoundData();
@@ -404,6 +417,17 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
     function getHealthFactor(address user) external view returns (uint256) {
         return _healthFactor(user);
+    }
+
+    function calculateHealthFactor(
+        uint256 totalDscMinted,
+        uint256 collateralValueInUsd
+    )
+        external
+        pure
+        returns (uint256)
+    {
+        return _calculateHealthFactor(totalDscMinted, collateralValueInUsd);
     }
 
     function getUsdValue(
@@ -455,6 +479,14 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     function getCollateralDeposited(address user, address token) external view returns (uint256) {
+        return sCollateralDeposited[user][token];
+    }
+
+    function getCollateralTokens() external view returns (address[] memory) {
+        return sCollateralTokens;
+    }
+
+    function getCollateralBalanceOfUser(address user, address token) external view returns (uint256) {
         return sCollateralDeposited[user][token];
     }
 }
