@@ -29,6 +29,7 @@ import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {console} from "forge-std/console.sol";
+import {OracleLib} from "./libraries/OracleLib.sol";
 
 /*
  * @title DSCEngine
@@ -88,6 +89,12 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
     event CollateralDeposited(address indexed user, address indexed token, uint256 indexed amount);
     event CollateralRedeemed(address indexed user, address indexed to, address indexed token, uint256 amount);
+
+    /*//////////////////////////////////////////////////////////////
+                                 TYPES
+    //////////////////////////////////////////////////////////////*/
+
+    using OracleLib for AggregatorV3Interface;
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -390,7 +397,7 @@ contract DSCEngine is ReentrancyGuard {
 
     function _getUsdValue(address token, uint256 amount) private view returns (uint256 usdValue) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(sPriceFeeds[token]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
+        (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
 
         if (price <= 0) {
             revert DSCEngine__InvalidPrice();
@@ -452,7 +459,7 @@ contract DSCEngine is ReentrancyGuard {
 
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface priceFeed = AggregatorV3Interface(sPriceFeeds[token]);
-        (, int256 price,,,) = priceFeed.latestRoundData();
+        (, int256 price,,,) = priceFeed.staleCheckLatestRoundData();
 
         if (price <= 0) {
             revert DSCEngine__InvalidPrice();
@@ -488,5 +495,9 @@ contract DSCEngine is ReentrancyGuard {
 
     function getCollateralBalanceOfUser(address user, address token) external view returns (uint256) {
         return sCollateralDeposited[user][token];
+    }
+
+    function getCollateralTokenPriceFeed(address token) external view returns (address) {
+        return sPriceFeeds[token];
     }
 }
